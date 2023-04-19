@@ -8,7 +8,8 @@ TASK_MODE = 'Lane'
 MAX_EPISODE_STEPS = 250
 params = {
     # screen size of cv2 window
-    'obs_size': (160, 100),
+    # 'obs_size': (160, 100),
+    'obs_size': 256,
     # time interval between two frames
     'dt': 0.025,
     # filter for defining ego vehicle
