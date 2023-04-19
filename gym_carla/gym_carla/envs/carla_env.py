@@ -45,8 +45,9 @@ class CarlaEnv(gym.Env):
         # action and observation space
         self.action_space = spaces.Box(
             np.array([-2.0, -2.0]), np.array([2.0, 2.0]), dtype=np.float32)
-        self.state_space = spaces.Box(
-            low=-50.0, high=50.0, shape=(12, ), dtype=np.float32)
+#         self.state_space = spaces.Box(
+#             low=-50.0, high=50.0, shape=(12, ), dtype=np.float32)
+        self.state_space = spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8)
 
         # Connect to carla server and get world object
         # print('connecting to Carla server...')
@@ -66,7 +67,7 @@ class CarlaEnv(gym.Env):
         self.collision_bp = self.world.get_blueprint_library().find(
             'sensor.other.collision')
         
-         # Camera sensor
+        # Camera sensor
         self.camera_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
         self.camera_trans = carla.Transform(carla.Location(x=0.8, z=1.7))
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.rgb')
@@ -101,6 +102,8 @@ class CarlaEnv(gym.Env):
             try:
                 self.collision_sensor = None
                 self.lane_sensor = None
+                
+                self.camera_sensor = None
 
                 # Delete sensors, vehicles and walkers
                 while self.actors:
@@ -164,6 +167,20 @@ class CarlaEnv(gym.Env):
                         self.collision_hist.pop(0)
 
                 self.collision_hist = []
+                
+                
+                # Add camera sensor
+                self.camera_sensor = self.world.spawn_actor(self.camera_bp, self.camera_trans, attach_to=self.ego)
+                
+                self.actors.append(self.camera_sensor)
+                
+                self.camera_sensor.listen(lambda data: get_camera_img(data))
+                def get_camera_img(data):
+                  array = np.frombuffer(data.raw_data, dtype = np.dtype("uint8"))
+                  array = np.reshape(array, (data.height, data.width, 4))
+                  array = array[:, :, :3]
+                  array = array[:, :, ::-1]
+                  self.camera_img = array
 
                 # Update timesteps
                 self.time_step = 1
@@ -495,11 +512,11 @@ class CarlaEnv(gym.Env):
 
     def _get_obs(self):
         # [img version]
-        # current_obs = self.camera_img[36:, :, :].copy()
-        # return np.float32(current_obs / 255.0)
+        current_obs = self.camera_img[36:, :, :].copy()
+        return np.float32(current_obs / 255.0)
 
         # [vec version]
-        return np.float32(self._info2normalized_state_vector())
+#         return np.float32(self._info2normalized_state_vector())
 
     def _get_reward(self, action):
         """
